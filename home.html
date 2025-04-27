@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter-Strikle Multiplayer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0 40px;
+        }
+
+        .search-box {
+            width: 60%;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px 15px 45px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #ffcc00;
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ffcc00;
+            font-size: 18px;
+        }
+
+        .players-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .player-card {
+            flex: 1;
+            background-color: rgba(20, 20, 20, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .player-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ff3333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .player-username {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .match-info {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bo-label {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .wolo-do {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .stats-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 500;
+            color: #ccc;
+            border-bottom: 1px solid #333;
+        }
+
+        .stats-table td {
+            padding: 12px 15px;
+            color: #fff;
+            border-bottom: 1px solid #333;
+        }
+
+        .stats-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stats-table .name {
+            font-weight: 500;
+        }
+
+        .stats-table .team {
+            color: #ccc;
+        }
+
+        .stats-table .nat {
+            text-align: center;
+            background-color: #4a3c25;
+            width: 40px;
+            height: 25px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stats-table .age {
+            background-color: #3a7563;
+            width: 40px;
+            height: 25px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stats-table .role {
+            background-color: #3a7563;
+            height: 25px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stats-table .maj-app {
+            text-align: right;
+        }
+
+        .stats-table .maj-app:after {
+            content: "↓";
+            margin-left: 5px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .stats-table .hidden .nat,
+        .stats-table .hidden .age,
+        .stats-table .hidden .role,
+        .stats-table .hidden .maj-app {
+            background-color: #1a1a1a;
+        }
+
+        .stats-table .correct {
+            background-color: #3a7563;
+        }
+
+        .stats-table .partial {
+            background-color: #b89b2a;
+        }
+
+        .stats-table .incorrect {
+            background-color: #1a1a1a;
+        }
+
+        .timer-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+            gap: 20px;
+        }
+
+        .timer-dots {
+            display: flex;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #333;
+        }
+
+        .dot.active {
+            background-color: #ff3333;
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #1a1a1a;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ffcc00;
+        }
+
+        .modal-player {
+            margin-bottom: 15px;
+        }
+
+        .modal-player-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .modal-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .modal-stat {
+            text-align: center;
+        }
+
+        .modal-stat-label {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .modal-stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .close-btn {
+            background-color: #ff3333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .attempts-counter {
+            text-align: center;
+            margin-top: 20px;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" placeholder="Type a CS player's name..." id="playerSearch">
+            </div>
+        </div>
+
+        <div class="players-container">
+            <div class="player-card" id="player1Card">
+                <div class="player-header">
+                    <div class="player-name">
+                        <div class="player-icon">T</div>
+                        <div class="player-username">THECOLD</div>
+                    </div>
+                    <div class="match-info">
+                        <span class="bo-label">BO1</span>
+                        <span class="wolo-do">WOLODO</span>
+                    </div>
+                </div>
+                <table class="stats-table" id="player1Table">
+                    <thead>
+                        <tr>
+                            <th>NAME</th>
+                            <th>TEAM</th>
+                            <th>NAT</th>
+                            <th>AGE</th>
+                            <th>ROLE</th>
+                            <th>MAJ APP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="name">ZywOo</td>
+                            <td class="team">Vitality</td>
+                            <td class="nat">🇫🇷</td>
+                            <td class="age">24</td>
+                            <td class="role">AWPer</td>
+                            <td class="maj-app">8</td>
+                        </tr>
+                        <tr>
+                            <td class="name">ropz</td>
+                            <td class="team">Vitality</td>
+                            <td class="nat">🇪🇪</td>
+                            <td class="age">25</td>
+                            <td class="role">Rifler</td>
+                            <td class="maj-app">9</td>
+                        </tr>
+                        <tr>
+                            <td class="name">Snax</td>
+                            <td class="team">G2</td>
+                            <td class="nat">🇵🇱</td>
+                            <td class="age">31</td>
+                            <td class="role">Rifler</td>
+                            <td class="maj-app">14</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="player-card" id="player2Card">
+                <div class="player-header">
+                    <div class="player-name">
+                        <div class="player-icon">A</div>
+                        <div class="player-username">ANON-33018</div>
+                    </div>
+                    <div class="match-info">
+                        <span class="bo-label">BO1</span>
+                        <span class="wolo-do">WOLODO</span>
+                    </div>
+                </div>
+                <table class="stats-table" id="player2Table">
+                    <thead>
+                        <tr>
+                            <th>NAME</th>
+                            <th>TEAM</th>
+                            <th>NAT</th>
+                            <th>AGE</th>
+                            <th>ROLE</th>
+                            <th>MAJ APP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="name hidden">****</td>
+                            <td class="team hidden">****</td>
+                            <td class="nat hidden">****</td>
+                            <td class="age hidden">****</td>
+                            <td class="role hidden">****</td>
+                            <td class="maj-app hidden">****</td>
+                        </tr>
+                        <tr>
+                            <td class="name hidden">****</td>
+                            <td class="team hidden">****</td>
+                            <td class="nat hidden">****</td>
+                            <td class="age hidden">****</td>
+                            <td class="role hidden">****</td>
+                            <td class="maj-app hidden">****</td>
+                        </tr>
+                        <tr>
+                            <td class="name hidden">****</td>
+                            <td class="team hidden">****</td>
+                            <td class="nat hidden">****</td>
+                            <td class="age hidden">****</td>
+                            <td class="role hidden">****</td>
+                            <td class="maj-app hidden">****</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="timer-container">
+            <div class="timer-dots">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <div class="timer" id="timer">00:60</div>
+            <div class="timer-dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+
+        <div class="attempts-counter" id="attemptsCounter">Attempts remaining: 9</div>
+    </div>
+
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="modal-title">Game Over!</div>
+            <div class="modal-player">
+                <div class="modal-player-name">Player 1</div>
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>NAME</th>
+                            <th>TEAM</th>
+                            <th>NAT</th>
+                            <th>AGE</th>
+                            <th>ROLE</th>
+                            <th>MAJ APP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="name">ZywOo</td>
+                            <td class="team">Vitality</td>
+                            <td class="nat">🇫🇷</td>
+                            <td class="age">24</td>
+                            <td class="role">AWPer</td>
+                            <td class="maj-app">8</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-player">
+                <div class="modal-player-name">Player 2</div>
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>NAME</th>
+                            <th>TEAM</th>
+                            <th>NAT</th>
+                            <th>AGE</th>
+                            <th>ROLE</th>
+                            <th>MAJ APP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="name">s1mple</td>
+                            <td class="team">NAVI</td>
+                            <td class="nat">🇺🇦</td>
+                            <td class="age">25</td>
+                            <td class="role">AWPer</td>
+                            <td class="maj-app">12</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button class="close-btn" id="closeModal">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Sample data (would normally come from a JSON file)
+        const csPlayers = [
+            { name: "ZywOo", team: "Vitality", nat: "🇫🇷", age: 24, role: "AWPer", majApp: 8 },
+            { name: "s1mple", team: "NAVI", nat: "🇺🇦", age: 25, role: "AWPer", majApp: 12 },
+            { name: "ropz", team: "Vitality", nat: "🇪🇪", age: 25, role: "Rifler", majApp: 9 },
+            { name: "Snax", team: "G2", nat: "🇵🇱", age: 31, role: "Rifler", majApp: 14 },
+            { name: "Xantares", team: "Vitality", nat: "🇫🇷", age: 28, role: "Rifler", majApp: 6 },
+            { name: "dupreeh", team: "Astralis", nat: "🇩🇰", age: 30, role: "Rifler", majApp: 15 }
+        ];
+
+        // Game state
+        let attemptsLeft = 9;
+        let timer;
+        let timeLeft = 20;
+        let gameOver = false;
+        let currentPlayer = 1; // 1 for player1, 2 for player2
+
+        // DOM elements
+        const playerSearch = document.getElementById('playerSearch');
+        const player1Table = document.getElementById('player1Table').querySelector('tbody');
+        const player2Table = document.getElementById('player2Table').querySelector('tbody');
+        const timerElement = document.getElementById('timer');
+        const attemptsCounter = document.getElementById('attemptsCounter');
+        const resultModal = document.getElementById('resultModal');
+        const closeModal = document.getElementById('closeModal');
+        const dots = document.querySelectorAll('.dot');
+
+        // Initialize game
+        function initGame() {
+            // Start timer
+            startTimer();
+            
+            // Add event listener to search input
+            playerSearch.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !gameOver && attemptsLeft > 0) {
+                    makeGuess();
+                }
+            });
+            
+            // Add event listener to close modal
+            closeModal.addEventListener('click', function() {
+                resultModal.style.display = 'none';
+                resetGame();
+            });
+        }
+
+        // Start the timer
+        function startTimer() {
+            timer = setInterval(function() {
+                timeLeft--;
+                timerElement.textContent = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // Make a guess
+        function makeGuess() {
+            const guess = playerSearch.value.trim();
+            
+            if (!guess) return;
+            
+            // Check if player has remaining attempts
+            if (attemptsLeft <= 0) {
+                alert("No more attempts left!");
+                return;
+            }
+            
+            // Find matching player
+            const matchedPlayer = csPlayers.find(player => 
+                player.name.toLowerCase() === guess.toLowerCase()
+            );
+            
+            if (!matchedPlayer) {
+                alert("Player not found!");
+                return;
+            }
+            
+            // Decrease attempts
+            attemptsLeft--;
+            attemptsCounter.textContent = `Attempts remaining: ${attemptsLeft}`;
+            
+            // Update UI with guess result
+            updateGuessResult(matchedPlayer);
+            
+            // Check if guess is correct
+            if (checkCorrectGuess(matchedPlayer)) {
+                endGame();
+            }
+            
+            // Clear input
+            playerSearch.value = '';
+            
+            // Switch current player
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+        }
+
+        // Update UI with guess result
+        function updateGuessResult(player) {
+            const table = currentPlayer === 1 ? player1Table : player2Table;
+            const rows = table.querySelectorAll('tr');
+            
+            // For demonstration, we'll just update the first row
+            const row = rows[0];
+            
+            // Check if this is the correct player
+            const isCorrect = checkCorrectGuess(player);
+            
+            // Update cells with appropriate classes
+            const cells = row.querySelectorAll('td');
+            cells[0].textContent = isCorrect ? player.name : '****';
+            cells[0].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[0].classList.add(isCorrect ? 'correct' : 'hidden');
+            
+            cells[1].textContent = isCorrect ? player.team : '****';
+            cells[1].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[1].classList.add(isCorrect ? 'correct' : 'hidden');
+            
+            cells[2].textContent = isCorrect ? player.nat : '****';
+            cells[2].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[2].classList.add(isCorrect ? 'correct' : 'hidden');
+            
+            cells[3].textContent = isCorrect ? player.age : '****';
+            cells[3].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[3].classList.add(isCorrect ? 'correct' : 'hidden');
+            
+            cells[4].textContent = isCorrect ? player.role : '****';
+            cells[4].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[4].classList.add(isCorrect ? 'correct' : 'hidden');
+            
+            cells[5].textContent = isCorrect ? player.majApp : '****';
+            cells[5].classList.remove('hidden', 'correct', 'partial', 'incorrect');
+            cells[5].classList.add(isCorrect ? 'correct' : 'hidden');
+        }
+
+        // Check if guess is correct
+        function checkCorrectGuess(player) {
+            // In a real game, this would compare to the target player
+            // For demonstration, we'll just return false
+            return false;
+        }
+
+        // End the game
+        function endGame() {
+            gameOver = true;
+            clearInterval(timer);
+            resultModal.style.display = 'flex';
+        }
+
+        // Reset the game
+        function resetGame() {
+            attemptsLeft = 9;
+            timeLeft = 20;
+            gameOver = false;
+            currentPlayer = 1;
+            
+            // Reset UI
+            timerElement.textContent = "00:20";
+            attemptsCounter.textContent = "Attempts remaining: 9";
+            
+            // Reset tables to initial state
+            resetTable(player1Table);
+            resetTable(player2Table);
+            
+            // Reset dots
+            resetDots();
+            
+            // Start new timer
+            startTimer();
+        }
+
+        // Reset a table to initial state
+        function resetTable(table) {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.textContent = cell.dataset.original || '****';
+                    cell.classList.remove('correct', 'partial', 'incorrect');
+                    cell.classList.add('hidden');
+                });
+            });
+        }
+
+        // Reset the dots
+        function resetDots() {
+            dots.forEach(dot => {
+                dot.classList.remove('active');
+            });
+            dots[0].classList.add('active');
+        }
+
+        // Initialize the game when page loads
+        window.onload = initGame;
+    </script>
+</body>
+</html>
