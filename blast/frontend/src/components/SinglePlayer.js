@@ -230,8 +230,8 @@ function SinglePlayer() {
             countryRegion: getRegion(guessedPlayer.country),
             targetCountryRegion: getRegion(player.country),
             birth_year: compareValues(guessedPlayer.birth_year, player.birth_year),
-            guessedAge: 2025 - guessedPlayer.birth_year, // 修改为2025年
-            targetAge: 2025 - player.birth_year, // 添加目标年龄
+            guessedAge: 2025 - guessedPlayer.birth_year, 
+            targetAge: 2025 - player.birth_year, 
             role: guessedPlayer.role,
             roleCorrect: guessedPlayer.role.toLowerCase() === player.role.toLowerCase(),
             majapp: compareMajors(guessedPlayer.majapp, player.majapp),

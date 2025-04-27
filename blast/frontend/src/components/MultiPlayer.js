@@ -60,6 +60,17 @@ function MultiPlayer() {
                     status: 'room'
                 }));
             },
+            playersReadyStatus: ({ readyPlayers }) => {
+                // 处理玩家准备状态更新
+                console.log('Players ready status updated:', readyPlayers);
+                // 更新本地状态，标记当前玩家是否已准备
+                if (socketRef.current) {
+                    setGameState(prev => ({
+                        ...prev,
+                        isReady: readyPlayers.includes(socketRef.current.id)
+                    }));
+                }
+            },
             chatHistory: (messages) => {
                 // 处理历史聊天记录
                 console.log('Received chat history:', messages);

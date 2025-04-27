@@ -185,6 +185,7 @@ io.on('connection', (socket) => {
         // 确保房间有准备玩家集合
         if (!roomReadyPlayers.has(roomId)) {
             roomReadyPlayers.set(roomId, new Set());
+            console.log(`创建房间 ${roomId} 的准备玩家集合`);
         }
         
         // 设置玩家准备状态
@@ -221,9 +222,10 @@ io.on('connection', (socket) => {
             }, 3000);
         }
 
-        io.to(roomId).emit('playerReadyChanged', {
-            playerId: socket.id,
-            isReady: true
+        // 广播所有玩家的准备状态
+        const readyPlayers = Array.from(roomReadyPlayers.get(roomId));
+        io.to(roomId).emit('playersReadyStatus', {
+            readyPlayers: readyPlayers
         });
     });
 
@@ -236,15 +238,18 @@ io.on('connection', (socket) => {
             // 检查猜测是否正确
             const isCorrect = guess.toLowerCase() === room.currentPlayer.hiddenName.toLowerCase();
             
-            // 构建结果对象
+            // 构建结果对象，确保包含所有GuessHistory组件需要的字段
             const result = {
                 name: guess,
                 team: playerData.team,
-                teamCorrect: playerData.team === room.currentPlayer.team,
+                teamCorrect: getTeamName(playerData.team) === getTeamName(room.currentPlayer.team),
                 country: playerData.country,
-                countryCorrect: playerData.country === room.currentPlayer.country,
+                countryCorrect: String(playerData.country).toLowerCase() === String(room.currentPlayer.country).toLowerCase(),
+                // 添加国家区域信息，用于显示"接近"状态
+                countryRegion: getRegion(playerData.country),
+                targetCountryRegion: getRegion(room.currentPlayer.country),
                 role: playerData.role,
-                roleCorrect: playerData.role === room.currentPlayer.role,
+                roleCorrect: String(playerData.role).toLowerCase() === String(room.currentPlayer.role).toLowerCase(),
                 birth_year: compareValues(playerData.birth_year || 2000, room.currentPlayer.birth_year),
                 guessedAge: 2025 - (playerData.birth_year || 2000),
                 targetAge: 2025 - room.currentPlayer.birth_year,
@@ -266,11 +271,25 @@ io.on('connection', (socket) => {
                 endRound(room, socket.id);
             }
         } else {
-            // 如果游戏还没开始，只是广播猜测信息
-            io.to(roomId).emit('playerGuess', {
+            // 如果游戏还没开始，也将猜测结果添加到玩家的猜测历史中
+            // 构建一个简化的结果对象
+            const simpleResult = {
+                name: guess,
+                team: playerData.team,
+                country: playerData.country,
+                role: playerData.role,
+                majapp: playerData.majapp || 0,
+                guessedMajapp: playerData.majapp || 0,
+                guessedAge: 2025 - (playerData.birth_year || 2000),
+                timestamp: Date.now()
+            };
+            
+            // 发送猜测结果给房间内所有玩家
+            io.to(roomId).emit('guessResult', {
                 playerId: socket.id,
                 guess,
-                playerData
+                result: simpleResult,
+                isCorrect: false
             });
         }
     });
@@ -387,6 +406,35 @@ io.on('connection', (socket) => {
                 startNewRound(room);
             }, 5000); // 5秒后开始下一回合
         }
+    }
+
+    // 获取国家所属区域 - 与客户端保持一致
+    function getRegion(country) {
+        const regionMapping = {
+            Asia: ['China', 'Mongolia', 'Indonesia', 'Malaysia', 'Turkey', 'India', 'Israel', 'Jordan', 'Uzbekistan'],
+            Oceania: ['Australia', 'New Zealand'],
+            Europe: ['France', 'Germany', 'Sweden', 'Denmark', 'Poland', 'Spain', 'Italy', 
+                    'Finland', 'Norway', 'Latvia', 'Estonia', 'Bosnia and Herzegovina', 
+                    'Montenegro', 'Serbia', 'Bulgaria', 'Czech Republic', 'Switzerland', 
+                    'Netherlands', 'Slovakia', 'Lithuania', 'Romania', 'United Kingdom', 
+                    'Ukraine', 'Belgium', 'Hungary', 'Portugal', 'Kosovo'],
+            Africa: ['South Africa'],
+            SouthAmerica: ['Brazil', 'Uruguay', 'Argentina', 'Chile', 'Guatemala'],
+            NorthAmerica: ['United States', 'Canada'],
+            CIS: ['Russia', 'Kazakhstan', 'Belarus']
+        };
+        
+        for (const [region, countries] of Object.entries(regionMapping)) {
+            if (countries.includes(country)) {
+                return region;
+            }
+        }
+        return 'Other';
+    }
+
+    // 提取纯队伍名称（移除角色后缀）
+    function getTeamName(team) {
+        return team.replace(/\s*\((coach|benched)\)$/i, '');
     }
 
     function compareValues(guessed, target) {

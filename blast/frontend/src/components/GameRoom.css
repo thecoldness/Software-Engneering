@@ -1,16 +1,16 @@
 .game-room {
     width: 100%;
-    height: calc(100vh - 40px); /* 预留顶部空间 */
+    min-height: calc(100vh - 40px); /* 预留顶部空间，改为最小高度 */
     padding: 20px;
     background: var(--mocha-bg);
     position: relative;
-    overflow: hidden; /* 禁止滚动条 */
+    overflow: visible; /* 允许内容溢出 */
 }
 
 .game-room-container {
     display: flex;
     gap: 20px;
-    height: 100%;
+    min-height: 100%; /* 改为最小高度 */
     max-width: 1600px;
     margin: 0 auto;
 }
@@ -21,8 +21,8 @@
     flex-direction: column;
     gap: 20px;
     min-width: 0; /* 防止内容溢出 */
-    height: 100%;
-    overflow: hidden; /* 禁止滚动条 */
+    min-height: 100%; /* 改为最小高度，允许内容扩展 */
+    overflow-x: hidden; /* 禁止水平滚动 */
 }
 
 .game-header {
@@ -201,7 +201,8 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.round-result-modal {
+/* 游戏结果弹窗样式 - 与 SinglePlayer 保持一致 */
+.game-result-modal {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -209,9 +210,86 @@
     background: var(--mocha-light);
     padding: 25px;
     border-radius: 12px;
-    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
     z-index: 1000;
-    min-width: 300px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.game-result-title {
+    text-align: center;
+    font-size: 24px;
+    color: var(--sage-green);
+    margin-bottom: 20px;
+}
+
+.game-result-content {
+    display: grid;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.player-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.player-info-label {
+    color: var(--muted-yellow);
+}
+
+.player-info-value {
+    color: var(--text-light);
+}
+
+.game-result-link {
+    display: block;
+    text-align: center;
+    color: var(--slate-blue);
+    text-decoration: none;
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.game-result-link:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.game-result-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.button-continue, 
+.button-stay {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    background: var(--sage-green);
+    color: white;
+}
+
+.button-stay {
+    background: var(--slate-blue);
+}
+
+.button-continue:hover, 
+.button-stay:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .chat-section {
@@ -402,13 +480,14 @@
     margin-top: 20px;
 }
 
-.player-history {
+/* Removed player-history specific styling as we're now using GuessHistory component directly */
+.guess-histories > div {
     background: var(--mocha-light);
     border-radius: 8px;
     padding: 15px;
 }
 
-.player-history h3 {
+.guess-histories > div h3 {
     color: var(--muted-yellow);
     margin-bottom: 10px;
 }
