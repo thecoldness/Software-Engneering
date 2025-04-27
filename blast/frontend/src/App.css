@@ -9,7 +9,8 @@
 }
 
 html, body, #root {
-    overflow: hidden; /* 禁止全局滚动条 */
+    overflow: auto; /* 禁止全局滚动条 */
+    overflow: visible;
 }
 
 /* 修改游戏容器的样式 */
@@ -24,7 +25,9 @@ html, body, #root {
     flex-direction: column;
     box-sizing: border-box;
     position: relative; /* 添加这行 */
-    overflow: hidden; /* 禁止滚动条 */
+    /* overflow: hidden; 禁止滚动条 */
+    overflow: auto;
+    overflow: visible;
 }
 
 .game-title {

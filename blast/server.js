@@ -55,6 +55,10 @@ class GameRoom {
     }
 }
 
+
+// 存储每个房间的准备玩家
+const roomReadyPlayers = new Map();
+
 // Socket.IO 事件处理
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
@@ -172,8 +176,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 存储每个房间的准备玩家
-    const roomReadyPlayers = new Map();
 
     socket.on('playerReady', ({ roomId }) => {
         const room = rooms.get(roomId);
