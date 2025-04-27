@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../config';
 import GameRoom from './GameRoom';
 import GameLobby from './GameLobby';
+import SpectatorView from './SpectatorView';
 import './MultiPlayer.css';
 
 function MultiPlayer() {
@@ -49,6 +50,20 @@ function MultiPlayer() {
                     roomId: data.roomCode,
                     status: 'room'
                 }));
+            },
+            roomJoined: (data) => {
+                setGameState(prev => ({
+                    ...prev,
+                    roomId: data.roomId,
+                    currentRound: data.currentRound,
+                    maxRounds: data.maxRounds,
+                    status: 'room'
+                }));
+            },
+            chatHistory: (messages) => {
+                // 处理历史聊天记录
+                console.log('Received chat history:', messages);
+                // 这里可以将历史消息传递给GameRoom组件
             },
             error: console.error
         };

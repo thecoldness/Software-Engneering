@@ -12,7 +12,7 @@ const decryptData = async (encryptedData) => {
     return await response.json();
 };
 
-function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
+function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, onReady }) {
     const [gameState, setGameState] = useState({
         currentPlayer: null,
         timeLeft: 60,
@@ -25,10 +25,12 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
     const [messages, setMessages] = useState([]);
 
     const [suggestions, setSuggestions] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
     const [newMessage, setNewMessage] = useState('');
     const [showGameResult, setShowGameResult] = useState(false);
     const [players, setPlayers] = useState({});
     const [isChatExpanded, setIsChatExpanded] = useState(true);
+    const [startCountdown, setStartCountdown] = useState(null);
 
     const regionMapping = {
         Asia: ['China', 'Mongolia', 'Indonesia', 'Malaysia', 'Turkey', 'India'],
@@ -54,16 +56,40 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
             .then(res => res.json())
             .then(data => setPlayers(data))
             .catch(err => console.error('获取玩家数据失败:', err));
+    }, []);
 
+    // 统一的事件处理
+    useEffect(() => {
         if (!socket) return;
 
+        console.log("Setting up socket event listeners");
+
+        const handleGameStarting = ({ countdown }) => {
+            console.log(`游戏即将开始，倒计时: ${countdown}秒`);
+            setStartCountdown(countdown);
+            
+            // 创建倒计时定时器
+            let timeLeft = countdown;
+            const countdownTimer = setInterval(() => {
+                timeLeft -= 1;
+                if (timeLeft > 0) {
+                    setStartCountdown(timeLeft);
+                } else {
+                    clearInterval(countdownTimer);
+                    setStartCountdown(null);
+                }
+            }, 1000);
+        };
+
         const handleRoundStart = (data) => {
+            console.log('Round started with player:', data);
             const simplePlayer = {
                 country: data.country,
                 team: data.team,
                 role: data.role,
                 majapp: data.majapp,
-                hiddenName: data.hiddenName
+                hiddenName: data.hiddenName,
+                birth_year: data.birth_year
             };
             
             setGameState(prev => ({
@@ -74,9 +100,13 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                 guess: ''
             }));
             setPlayersGuesses({});
+            
+            // 清理历史记录
+            guessHistoryRef.current = [];
         };
 
         const handleRoundEnd = ({ winner, correctAnswer }) => {
+            console.log('Round ended, correct answer:', correctAnswer);
             setGameState(prev => ({
                 ...prev,
                 showAnswer: true,
@@ -85,185 +115,216 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
             setShowGameResult(true);
         };
 
-        const handleChatMessage = (message) => {
-            setMessages(prev => [...prev, message]);
-        };
-
-        socket.on('roundStart', handleRoundStart);
-        socket.on('roundEnd', handleRoundEnd);
-        socket.on('chatMessage', handleChatMessage);
-
-        return () => {
-            socket.off('roundStart', handleRoundStart);
-            socket.off('roundEnd', handleRoundEnd);
-            socket.off('chatMessage', handleChatMessage);
-        };
-    }, [socket, roomId]);
-
-    const handleGuessResult = useCallback(({ playerId, guess, result }) => {
-        if (!result) return;
-        
-        // 使用单层数据结构
-        setPlayersGuesses(prev => ({
-            ...prev,
-            [playerId]: [
-                ...(prev[playerId] || []),
-                {
+        const handleGuessResult = ({ playerId, guess, result }) => {
+            console.log('Guess result received:', playerId, guess, result);
+            if (!result) return;
+            
+            // 使用单层数据结构
+            setPlayersGuesses(prev => {
+                const newGuesses = { ...prev };
+                if (!newGuesses[playerId]) {
+                    newGuesses[playerId] = [];
+                }
+                newGuesses[playerId].push({
                     name: guess,
                     ...result,
                     timestamp: Date.now()
-                }
-            ]
-        }));
-    }, []);
-
-    useEffect(() => {
-        if (!socket) return;
-
-        // 一次性注册所有事件监听器
-        const eventHandlers = {
-            'roundStart': (data) => {
-                const simpleData = {
-                    country: data.country,
-                    team: data.team,
-                    role: data.role,
-                    majapp: data.majapp,
-                    hiddenName: data.hiddenName
-                };
-                
-                setGameState(prev => ({
-                    ...prev,
-                    currentPlayer: simpleData,
-                    remainingGuesses: 8,
-                    timeLeft: 60,
-                    guess: ''
-                }));
-                setPlayersGuesses({});
-            },
-            'guessResult': handleGuessResult,
-            'roundEnd': ({ winner, correctAnswer }) => {
-                setGameState(prev => ({
-                    ...prev,
-                    showAnswer: true,
-                    currentPlayer: {
-                        ...prev.currentPlayer,
-                        hiddenName: correctAnswer
-                    }
-                }));
-                setShowGameResult(true);
-            }
-        };
-
-        // 注册事件
-        Object.entries(eventHandlers).forEach(([event, handler]) => {
-            socket.on(event, handler);
-        });
-
-        // 清理函数
-        return () => {
-            Object.keys(eventHandlers).forEach(event => {
-                socket.off(event);
-            });
-        };
-    }, [socket, handleGuessResult]);
-
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleRoundStart = (data) => {
-            // 简化数据结构
-            const gameData = {
-                currentPlayer: {
-                    country: data.country,
-                    team: data.team,
-                    role: data.role,
-                    majapp: data.majapp,
-                    hiddenName: data.hiddenName
-                },
-                remainingGuesses: 8,
-                timeLeft: 60,
-                guess: ''
-            };
-            
-            setGameState(gameData);
-            setPlayersGuesses({});
-        };
-
-        const handleGuessResult = (data) => {
-            // 使用简单数据结构
-            setPlayersGuesses(prev => {
-                const newGuesses = { ...prev };
-                if (!newGuesses[data.playerId]) {
-                    newGuesses[data.playerId] = [];
-                }
-                newGuesses[data.playerId].push(data.result);
+                });
                 return newGuesses;
             });
         };
 
-        socket.on('roundStart', handleRoundStart);
-        socket.on('guessResult', handleGuessResult);
-        
-        return () => {
-            socket.off('roundStart', handleRoundStart);
-            socket.off('guessResult', handleGuessResult);
+        // 处理游戏开始前的玩家猜测
+        const handlePlayerGuess = ({ playerId, guess, playerData }) => {
+            console.log('Player guess received:', playerId, guess, playerData);
+            
+            // 将猜测添加到聊天消息中
+            const message = {
+                id: playerId,
+                content: `猜测: ${guess}`,
+                timestamp: Date.now(),
+                isGuess: true
+            };
+            
+            setMessages(prev => [...prev, message]);
         };
-    }, [socket]);
 
-    useEffect(() => {
-        if (!socket) return;
-        
-        const handlers = {
-            roundStart: (data) => {
-                setGameState(prev => ({
-                    ...prev,
-                    currentPlayer: {
-                        country: data.country,
-                        team: data.team,
-                        role: data.role,
-                        majapp: data.majapp,
-                        hiddenName: data.hiddenName
-                    },
-                    remainingGuesses: 8,
-                    timeLeft: 60,
-                    guess: ''
-                }));
-                // 清理历史记录
-                guessHistoryRef.current = [];
+        const handleChatMessage = (message) => {
+            // 只有当消息不是自己发送的时候才添加到消息列表
+            if (message.id !== socket.id) {
+                setMessages(prev => [...prev, message]);
             }
         };
 
-        // 注册事件处理器
-        Object.entries(handlers).forEach(([event, handler]) => {
-            socket.on(event, handler);
-        });
+        const handleChatHistory = (history) => {
+            // 设置历史聊天记录
+            setMessages(history);
+        };
+
+        // 注册所有事件监听器
+        socket.on('gameStarting', handleGameStarting);
+        socket.on('roundStart', handleRoundStart);
+        socket.on('roundEnd', handleRoundEnd);
+        socket.on('guessResult', handleGuessResult);
+        socket.on('playerGuess', handlePlayerGuess);
+        socket.on('chatMessage', handleChatMessage);
+        socket.on('chatHistory', handleChatHistory);
+
+        // 清理函数
+        return () => {
+            socket.off('gameStarting', handleGameStarting);
+            socket.off('roundStart', handleRoundStart);
+            socket.off('roundEnd', handleRoundEnd);
+            socket.off('guessResult', handleGuessResult);
+            socket.off('playerGuess', handlePlayerGuess);
+            socket.off('chatMessage', handleChatMessage);
+            socket.off('chatHistory', handleChatHistory);
+        };
+    }, [socket]);
+
+    // 添加倒计时定时器
+    useEffect(() => {
+        let timer;
+        if (gameState.timeLeft > 0 && gameState.currentPlayer) {
+            console.log(`Countdown: ${gameState.timeLeft} seconds left`);
+            timer = setInterval(() => {
+                setGameState(prev => ({
+                    ...prev,
+                    timeLeft: prev.timeLeft - 1
+                }));
+            }, 1000);
+        } else if (gameState.timeLeft === 0 && gameState.currentPlayer) {
+            // 时间到，显示结果
+            console.log('Time is up, showing result');
+            setShowGameResult(true);
+        }
 
         return () => {
-            // 清理事件监听器
-            Object.keys(handlers).forEach(event => {
-                socket.off(event);
-            });
+            if (timer) clearInterval(timer);
         };
-    }, [socket]); // 只依赖 socket
+    }, [gameState.timeLeft, gameState.currentPlayer]);
+
+    // 确保当currentPlayer更新时重置倒计时
+    useEffect(() => {
+        if (gameState.currentPlayer) {
+            console.log('Current player updated, resetting timer');
+            setGameState(prev => ({
+                ...prev,
+                timeLeft: 60,
+                remainingGuesses: 8
+            }));
+        }
+    }, [gameState.currentPlayer]);
 
     const handleInputChange = (e) => {
         const value = e.target.value;
         setGameState((prev) => ({ ...prev, guess: value }));
-
+        
         if (!value.trim()) {
             setSuggestions([]);
             return;
         }
 
-        fetch(`${API_BASE_URL}/api/search-players?query=${value}`)
+        // 使用encodeURIComponent确保查询参数正确编码
+        fetch(`${API_BASE_URL}/api/search-players?query=${encodeURIComponent(value)}`)
             .then((response) => response.json())
-            .then((data) => setSuggestions(data))
+            .then((data) => {
+                setSuggestions(data);
+                // 确保建议列表可见
+                const suggestionsElement = document.querySelector('.suggestions-list');
+                if (suggestionsElement) {
+                    suggestionsElement.style.display = 'block';
+                }
+            })
             .catch((error) => console.error('搜索选手失败:', error));
     };
 
-    const handleGuess = () => {
-        if (!gameState.currentPlayer || gameState.remainingGuesses <= 0 || !gameState.guess.trim()) return;
+    // 改进的键盘事件处理，增加跨平台兼容性
+    const handleKeyDown = (e) => {
+        if (suggestions.length === 0) return;
 
+        // 获取键值，兼容不同浏览器和平台
+        const key = e.key || e.keyCode;
+        
+        // 使用键值或键码进行判断
+        if (key === 'ArrowDown' || key === 40) {
+            e.preventDefault();
+            const nextIndex = selectedIndex < suggestions.length - 1 ? selectedIndex + 1 : selectedIndex;
+            setSelectedIndex(nextIndex);
+            if (nextIndex >= 0) {
+                setGameState(prev => ({ ...prev, guess: suggestions[nextIndex].name }));
+            }
+        } 
+        else if (key === 'ArrowUp' || key === 38) {
+            e.preventDefault();
+            const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : 0;
+            setSelectedIndex(prevIndex);
+            if (prevIndex >= 0) {
+                setGameState(prev => ({ ...prev, guess: suggestions[prevIndex].name }));
+            }
+        } 
+        else if (key === 'Enter' || key === 13) {
+            e.preventDefault();
+            if (selectedIndex >= 0) {
+                submitGuessWithName(suggestions[selectedIndex].name);
+                setSuggestions([]);
+                setSelectedIndex(-1);
+            } else if (gameState.guess.trim()) {
+                handleGuess();
+            }
+        }
+    };
+
+    const submitGuessWithName = (playerName) => {
+        const guessedPlayer = players[playerName];
+        if (!guessedPlayer) return;
+
+        // 发送简化的猜测数据
+        const guessData = {
+            roomId,
+            guess: playerName,
+            playerData: {
+                name: playerName,
+                team: guessedPlayer.team,
+                country: guessedPlayer.country,
+                role: guessedPlayer.role,
+                majapp: guessedPlayer.majapp
+            }
+        };
+
+        // 无论游戏是否开始，都发送猜测数据
+        socket.emit('submitGuess', guessData);
+
+        // 添加自己的猜测到聊天消息中
+        const message = {
+            id: socket.id,
+            content: `猜测: ${playerName}`,
+            timestamp: Date.now(),
+            isGuess: true
+        };
+        
+        setMessages(prev => [...prev, message]);
+
+        // 如果游戏已经开始且有剩余猜测次数，则减少剩余猜测次数
+        if (gameState.currentPlayer && gameState.remainingGuesses > 0) {
+            setGameState(prev => ({
+                ...prev,
+                remainingGuesses: prev.remainingGuesses - 1,
+                guess: ''
+            }));
+        } else {
+            // 如果游戏还没开始，只是清空输入框
+            setGameState(prev => ({
+                ...prev,
+                guess: ''
+            }));
+        }
+        setSuggestions([]);
+    };
+
+    const handleGuess = () => {
+        if (!gameState.guess.trim()) return;
+        
         const guessedPlayer = players[gameState.guess];
         if (!guessedPlayer) return;
 
@@ -280,13 +341,33 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
             }
         };
 
+        // 无论游戏是否开始，都发送猜测数据
         socket.emit('submitGuess', guessData);
 
-        setGameState(prev => ({
-            ...prev,
-            remainingGuesses: prev.remainingGuesses - 1,
-            guess: ''
-        }));
+        // 添加自己的猜测到聊天消息中
+        const message = {
+            id: socket.id,
+            content: `猜测: ${gameState.guess}`,
+            timestamp: Date.now(),
+            isGuess: true
+        };
+        
+        setMessages(prev => [...prev, message]);
+
+        // 如果游戏已经开始且有剩余猜测次数，则减少剩余猜测次数
+        if (gameState.currentPlayer && gameState.remainingGuesses > 0) {
+            setGameState(prev => ({
+                ...prev,
+                remainingGuesses: prev.remainingGuesses - 1,
+                guess: ''
+            }));
+        } else {
+            // 如果游戏还没开始，只是清空输入框
+            setGameState(prev => ({
+                ...prev,
+                guess: ''
+            }));
+        }
         setSuggestions([]);
     };
 
@@ -299,6 +380,10 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
             timestamp: Date.now(),
         };
 
+        // 先添加到本地消息列表，确保立即显示
+        setMessages(prev => [...prev, message]);
+        
+        // 然后发送到服务器
         socket.emit('chatMessage', { roomId, ...message });
         setNewMessage('');
     };
@@ -313,6 +398,11 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                         <div className="game-status">
                             <span>回合: {currentRound}/{maxRounds}</span>
                             <span>剩余时间: {gameState.timeLeft}秒</span>
+                            {startCountdown !== null && (
+                                <div className="game-starting-countdown">
+                                    游戏即将开始: {startCountdown}秒
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -322,19 +412,21 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                             type="text"
                             value={gameState.guess}
                             onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
                             placeholder="输入选手名字"
-                            disabled={!gameState.currentPlayer || gameState.remainingGuesses <= 0}
+                            disabled={gameState.remainingGuesses <= 0}
                             className="player-input"
                         />
                         {suggestions.length > 0 && (
                             <div className="suggestions-list">
-                                {suggestions.map((suggestion) => (
+                                {suggestions.map((suggestion, index) => (
                                     <div
                                         key={suggestion.name}
-                                        className="suggestion-item"
+                                        className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
                                         onClick={() => {
                                             setGameState((prev) => ({ ...prev, guess: suggestion.name }));
                                             setSuggestions([]);
+                                            setSelectedIndex(-1);
                                         }}
                                     >
                                         {suggestion.name}
@@ -345,13 +437,23 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                     </div>
 
                     <div className="button-group">
-                        <button
-                            className="submit-guess"
-                            onClick={handleGuess}
-                            disabled={!gameState.currentPlayer || gameState.remainingGuesses <= 0}
-                        >
-                            提交
-                        </button>
+                        {gameState.currentPlayer ? (
+                            <button
+                                className="submit-guess"
+                                onClick={handleGuess}
+                                disabled={gameState.remainingGuesses <= 0}
+                            >
+                                提交
+                            </button>
+                        ) : (
+                            <button
+                                className={`ready-button ${isReady ? 'ready' : ''}`}
+                                onClick={onReady}
+                                disabled={isReady}
+                            >
+                                {isReady ? '已准备' : '准备'}
+                            </button>
+                        )}
                     </div>
 
                     <div className="progress-container">
@@ -389,7 +491,11 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                     </div>
                     <div className="messages-container">
                         {messages.map((msg, idx) => (
-                            <div key={idx} className={`message ${msg.id === socket.id ? 'self' : ''}`}>
+                            <div 
+                                key={idx} 
+                                className={`message ${msg.id === socket.id ? 'self' : ''}`}
+                                data-is-guess={msg.isGuess ? "true" : "false"}
+                            >
                                 <span className="message-time">
                                     {new Date(msg.timestamp).toLocaleTimeString()}
                                 </span>
@@ -402,7 +508,13 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds }) {
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            onKeyDown={(e) => {
+                                // 使用onKeyDown代替onKeyPress，并支持键码
+                                const key = e.key || e.keyCode;
+                                if (key === 'Enter' || key === 13) {
+                                    sendMessage();
+                                }
+                            }}
                             placeholder="发送消息..."
                         />
                         <button onClick={sendMessage}>发送</button>

@@ -43,15 +43,15 @@ function App() {
                 <div className="menu-container">
                     <div className="menu-buttons">
                         <button onClick={() => setMode('single')}>单人模式</button>
-                        <button className="disabled" disabled title="正在开发中">
+                        <button onClick={() => setMode('multi')}>
                             多人对战
-                            <span className="dev-badge">开发中</span>
                         </button>
                     </div>
                 </div>
             )}
             
             {mode === 'single' && <SinglePlayer />}
+            {mode === 'multi' && <MultiPlayer />}
             <RegionGuide 
                 isOpen={isRegionGuideOpen}
                 onClose={() => setIsRegionGuideOpen(false)}

@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     <title>GuessCSPRO</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -15,6 +17,25 @@
             color: #ffffff;
             font-family: 'Roboto', sans-serif;
             overflow-x: hidden;
+        }
+        
+        /* 改善移动设备上的输入体验 */
+        input, textarea, select, button {
+            font-size: 16px; /* 防止iOS上自动缩放 */
+            -webkit-appearance: none; /* 移除iOS默认样式 */
+            appearance: none;
+            border-radius: 0; /* 确保在某些浏览器中边框一致 */
+        }
+        
+        /* 禁用双击缩放 */
+        * {
+            touch-action: manipulation;
+        }
+        
+        /* 确保点击区域足够大 */
+        button, [role="button"], a.button, input[type="submit"], input[type="button"] {
+            min-height: 44px;
+            min-width: 44px;
         }
     </style>
 </head>

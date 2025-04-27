@@ -82,6 +82,30 @@
     gap: 20px;
     font-size: 1.1em;
     color: var(--muted-yellow);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.game-starting-countdown {
+    background-color: var(--slate-blue);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+    margin-left: auto;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 .scores-display {
@@ -116,14 +140,23 @@
 }
 
 .suggestion-item {
-    padding: 10px 15px;
+    padding: 14px 15px; /* 增加垂直内边距，使触摸更容易 */
     cursor: pointer;
     transition: all 0.2s;
+    min-height: 44px; /* 确保足够的触摸区域 */
+    display: flex;
+    align-items: center; /* 垂直居中文本 */
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover, .suggestion-item.selected {
     background: var(--slate-blue);
     color: var(--text-light);
+}
+
+/* 添加触摸反馈 */
+.suggestion-item:active {
+    background: var(--slate-blue);
+    opacity: 0.8;
 }
 
 .submit-guess {
@@ -138,6 +171,27 @@
 }
 
 .submit-guess:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ready-button {
+    padding: 12px 24px;
+    background: var(--slate-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+    width: 100%;
+}
+
+.ready-button.ready {
+    background: var(--sage-green);
+}
+
+.ready-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
@@ -235,6 +289,12 @@
     font-style: italic;
 }
 
+.message.self[data-is-guess="true"],
+.message[data-is-guess="true"] {
+    background: rgba(255, 193, 7, 0.2);
+    border-left: 3px solid #ffc107;
+}
+
 .message-input {
     display: flex;
     padding: 10px;
@@ -244,11 +304,14 @@
 
 .message-input input {
     flex: 1;
-    padding: 8px;
+    padding: 8px 12px;
     border: none;
     border-radius: 4px;
     background: var(--mocha-bg);
     color: var(--text-light);
+    font-size: 16px; /* 确保在移动设备上文本足够大 */
+    -webkit-appearance: none; /* 移除iOS默认样式 */
+    appearance: none;
 }
 
 .message-input button {
@@ -258,6 +321,13 @@
     background: var(--sage-green);
     color: white;
     cursor: pointer;
+    min-width: 60px; /* 确保按钮有足够的点击区域 */
+    font-size: 16px;
+}
+
+/* 添加触摸反馈 */
+.message-input button:active {
+    opacity: 0.8;
 }
 
 .players-guesses {
@@ -410,11 +480,18 @@
     color: var(--text-light);
     font-size: 16px;
     transition: all 0.3s;
+    -webkit-appearance: none; /* 移除iOS默认样式 */
+    appearance: none;
 }
 
 .player-input:focus {
     outline: none;
     box-shadow: 0 0 0 2px var(--slate-blue);
+}
+
+/* 确保在触摸设备上有足够的点击区域 */
+.player-input, .message-input input, button {
+    min-height: 44px; /* 苹果推荐的最小触摸目标大小 */
 }
 
 .suggestions-list {
@@ -429,17 +506,27 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     z-index: 1000;
     margin-top: 4px;
+    -webkit-overflow-scrolling: touch; /* 为iOS提供平滑滚动 */
 }
 
 .suggestion-item {
-    padding: 10px 15px;
+    padding: 14px 15px; /* 增加垂直内边距，使触摸更容易 */
     cursor: pointer;
     transition: all 0.2s;
+    min-height: 44px; /* 确保足够的触摸区域 */
+    display: flex;
+    align-items: center; /* 垂直居中文本 */
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover, .suggestion-item.selected {
     background: var(--slate-blue);
     color: var(--text-light);
+}
+
+/* 添加触摸反馈 */
+.suggestion-item:active {
+    background: var(--slate-blue);
+    opacity: 0.8;
 }
 
 .submit-guess {
