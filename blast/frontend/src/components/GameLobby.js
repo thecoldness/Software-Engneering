@@ -14,8 +14,6 @@ function GameLobby({ rooms, maxRounds, setMaxRounds, onCreateRoom, onJoinRoom })
                         className="rounds-select"
                     >
                         <option value={3}>3局(Bo5)</option>
-                        <option value={4}>4局(Bo7)</option>
-                        <option value={5}>5局(Bo9)</option>
                     </select>
                 </div>
                 <button className="create-room-btn" onClick={onCreateRoom}>
