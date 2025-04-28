@@ -658,12 +658,12 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                             <h3>对手的猜测</h3>
                             {Object.entries(playersGuesses).map(([playerId, guesses]) => (
                                 playerId !== socket.id && (
-                                    <GuessHistory key={playerId} history={guesses} player={gameState.currentPlayer} />
+                                    <GuessHistory key={playerId} history={guesses} player={gameState.currentPlayer} isOpponent={true} />
                                 )
                             ))}
                             {/* 如果没有对手的猜测，显示空表格 */}
                             {Object.keys(playersGuesses).filter(id => id !== socket.id).length === 0 && (
-                                <GuessHistory history={[]} player={gameState.currentPlayer} />
+                                <GuessHistory history={[]} player={gameState.currentPlayer} isOpponent={true} />
                             )}
                         </div>
                     </div>

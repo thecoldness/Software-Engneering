@@ -1,7 +1,7 @@
 import React from 'react';
 import './GuessHistory.css';
 
-function GuessHistory({ history, player }) { // 添加 player prop
+function GuessHistory({ history, player, isOpponent = false }) { // 添加 isOpponent prop
     if (!history || history.length === 0) return null;
 
     return (
@@ -20,17 +20,17 @@ function GuessHistory({ history, player }) { // 添加 player prop
                 <tbody>
                     {history.map((guess, index) => (
                         <tr key={index}>
-                            <td>{guess.name}</td>
+                            <td>{isOpponent ? '***' : guess.name}</td>
                             <td className={guess.teamCorrect ? 'correct' : 'incorrect'}>
-                                {guess.team}
+                                {isOpponent ? '***' : guess.team}
                             </td>
                             <td className={guess.countryCorrect ? 'correct' : 
                                  (guess.countryRegion === guess.targetCountryRegion ? 'close' : 'incorrect')}>
-                                 {guess.country}
+                                 {isOpponent ? '***' : guess.country}
                             </td>
                             <td className={`age-cell ${guess.birth_year}`}>
-                                {guess.guessedAge}
-                                {guess.birth_year !== 'correct' && (
+                                {isOpponent ? '***' : guess.guessedAge}
+                                {!isOpponent && guess.birth_year !== 'correct' && (
                                     <span className="indicator">
                                         {guess.birth_year === 'higher' ? '↑' : 
                                          guess.birth_year === 'close' ? 
@@ -40,11 +40,11 @@ function GuessHistory({ history, player }) { // 添加 player prop
                                 )}
                             </td>
                             <td className={guess.roleCorrect ? 'correct' : 'incorrect'}>
-                                {guess.role}
+                                {isOpponent ? '***' : guess.role}
                             </td>
                             <td className={`majapp-cell ${guess.majapp}`}>
-                                {guess.guessedMajapp}
-                                {guess.majapp !== 'correct' && (
+                                {isOpponent ? '***' : guess.guessedMajapp}
+                                {!isOpponent && guess.majapp !== 'correct' && (
                                     <span className="indicator">
                                         {guess.majapp === 'higher' ? '↓' : 
                                          guess.majapp === 'close' ? 
