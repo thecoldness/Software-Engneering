@@ -73,7 +73,7 @@
         "Rating1.0": "1.21",
         "link": "https://www.hltv.org/player/19230/m0nesy",
         "country": "Russia",
-        "team": "G2",
+        "team": "Falcons",
         "birth_year": 2006,
         "role": "AWPer"
     },
@@ -7186,6 +7186,19 @@
         "country": "South Africa",
         "team": "No team",
         "birth_year": 1989,
+        "role": "Rifler"
+    },
+    "东大吴彦祖!": {
+        "player": "东大吴彦祖!",
+        "Maps": "NaN",
+        "Rounds": "16",
+        "K-D Diff": "10",
+        "K/D": "1.09",
+        "Rating1.0": "0.95",
+        "link": "https://www.hltv.org/",
+        "country": "China",
+        "team": "A501",
+        "birth_year": 2003,
         "role": "Rifler"
     }
 }
