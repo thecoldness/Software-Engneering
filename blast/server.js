@@ -439,6 +439,9 @@ io.on('connection', (socket) => {
             }, 5000); // 5秒后移除房间，给玩家足够时间看到游戏结束消息
         } else {
             // 准备下一回合
+            // 发送下一回合倒计时事件
+            io.to(room.id).emit('nextRoundCountdown', { countdown: 5 });
+            
             room.nextRoundTimer = setTimeout(() => {
                 startNewRound(room);
             }, 5000); // 5秒后开始下一回合

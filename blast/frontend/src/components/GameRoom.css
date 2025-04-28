@@ -86,7 +86,8 @@
     align-items: center;
 }
 
-.game-starting-countdown {
+.game-starting-countdown,
+.next-round-countdown {
     background-color: var(--slate-blue);
     color: white;
     padding: 5px 10px;
@@ -94,6 +95,10 @@
     font-weight: bold;
     animation: pulse 1s infinite;
     margin-left: auto;
+}
+
+.next-round-countdown {
+    background-color: var(--sage-green);
 }
 
 @keyframes pulse {

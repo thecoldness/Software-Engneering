@@ -31,6 +31,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
     const [players, setPlayers] = useState({});
     const [isChatExpanded, setIsChatExpanded] = useState(true);
     const [startCountdown, setStartCountdown] = useState(null);
+    const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
     const [gameEndMessage, setGameEndMessage] = useState(null);
 
     // 区域映射 - 与 SinglePlayer 保持一致
@@ -315,6 +316,24 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             setMessages(history);
         };
 
+        // 处理下一回合倒计时事件
+        const handleNextRoundCountdown = ({ countdown }) => {
+            console.log(`下一回合倒计时: ${countdown}秒`);
+            setNextRoundCountdown(countdown);
+            
+            // 创建倒计时定时器
+            let timeLeft = countdown;
+            const countdownTimer = setInterval(() => {
+                timeLeft -= 1;
+                if (timeLeft > 0) {
+                    setNextRoundCountdown(timeLeft);
+                } else {
+                    clearInterval(countdownTimer);
+                    setNextRoundCountdown(null);
+                }
+            }, 1000);
+        };
+
         // 处理游戏结束事件
         const handleGameEnd = ({ winners, scores }) => {
             console.log('Game ended, winners:', winners, 'scores:', scores);
@@ -344,6 +363,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
         socket.on('chatMessage', handleChatMessage);
         socket.on('chatHistory', handleChatHistory);
         socket.on('playersReadyStatus', handlePlayersReadyStatus);
+        socket.on('nextRoundCountdown', handleNextRoundCountdown);
         socket.on('gameEnd', handleGameEnd);
 
         // 清理函数
@@ -355,6 +375,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             socket.off('chatMessage', handleChatMessage);
             socket.off('chatHistory', handleChatHistory);
             socket.off('playersReadyStatus', handlePlayersReadyStatus);
+            socket.off('nextRoundCountdown', handleNextRoundCountdown);
             socket.off('gameEnd', handleGameEnd);
         };
     }, [socket]);
@@ -578,10 +599,20 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                                     : 0
                                 }</span>
                             </div>
-                            <span>剩余时间: {gameState.timeLeft}秒</span>
+                            <span>
+                                {nextRoundCountdown !== null 
+                                    ? `下一回合倒计时: ${nextRoundCountdown}秒` 
+                                    : `剩余时间: ${gameState.timeLeft}秒`
+                                }
+                            </span>
                             {startCountdown !== null && (
                                 <div className="game-starting-countdown">
                                     游戏即将开始: {startCountdown}秒
+                                </div>
+                            )}
+                            {nextRoundCountdown !== null && (
+                                <div className="next-round-countdown">
+                                    下一回合即将开始: {nextRoundCountdown}秒
                                 </div>
                             )}
                         </div>
