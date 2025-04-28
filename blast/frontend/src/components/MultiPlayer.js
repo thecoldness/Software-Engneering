@@ -3,7 +3,6 @@ import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../config';
 import GameRoom from './GameRoom';
 import GameLobby from './GameLobby';
-import SpectatorView from './SpectatorView';
 import './MultiPlayer.css';
 
 function MultiPlayer() {
@@ -14,7 +13,8 @@ function MultiPlayer() {
         currentRound: 0,
         maxRounds: 3,
         status: 'lobby',
-        isReady: false
+        isReady: false,
+        scores: {} // 初始化分数对象
     });
 
     useEffect(() => {
@@ -48,7 +48,8 @@ function MultiPlayer() {
                 setGameState(prev => ({
                     ...prev,
                     roomId: data.roomCode,
-                    status: 'room'
+                    status: 'room',
+                    isReady: false // 重置准备状态
                 }));
             },
             roomJoined: (data) => {
@@ -57,7 +58,8 @@ function MultiPlayer() {
                     roomId: data.roomId,
                     currentRound: data.currentRound,
                     maxRounds: data.maxRounds,
-                    status: 'room'
+                    status: 'room',
+                    isReady: false // 重置准备状态
                 }));
             },
             playersReadyStatus: ({ readyPlayers }) => {
@@ -70,6 +72,50 @@ function MultiPlayer() {
                         isReady: readyPlayers.includes(socketRef.current.id)
                     }));
                 }
+            },
+            roundEnd: ({ winner, correctAnswer, scores }) => {
+                // 处理回合结束，更新分数
+                console.log('Round ended, winner:', winner, 'scores:', scores);
+                if (scores) {
+                    // 将服务器返回的分数数组转换为对象
+                    const scoresObj = {};
+                    scores.forEach(([playerId, score]) => {
+                        scoresObj[playerId] = score;
+                    });
+                    
+                    setGameState(prev => ({
+                        ...prev,
+                        scores: scoresObj
+                    }));
+                }
+            },
+            gameEnd: ({ winners, scores }) => {
+                // 处理游戏结束，更新最终分数
+                console.log('Game ended, winners:', winners, 'scores:', scores);
+                if (scores) {
+                    // 将服务器返回的分数数组转换为对象
+                    const scoresObj = {};
+                    scores.forEach(([playerId, score]) => {
+                        scoresObj[playerId] = score;
+                    });
+                    
+                    setGameState(prev => ({
+                        ...prev,
+                        scores: scoresObj
+                    }));
+                }
+            },
+            roomClosed: ({ roomId }) => {
+                // 处理房间关闭事件，返回大厅
+                console.log(`房间 ${roomId} 已关闭`);
+                setGameState(prev => ({
+                    ...prev,
+                    status: 'lobby',
+                    roomId: null,
+                    currentRound: 0,
+                    scores: {},
+                    isReady: false // 重置准备状态
+                }));
             },
             chatHistory: (messages) => {
                 // 处理历史聊天记录
@@ -108,20 +154,12 @@ function MultiPlayer() {
             socketRef.current.emit('joinRoom', roomId);
             setGameState(prev => ({
                 ...prev,
-                status: 'room'
+                status: 'room',
+                isReady: false // 重置准备状态
             }));
         }
     };
 
-    const handleSpectateRoom = (roomId) => {
-        if (socketRef.current) {
-            socketRef.current.emit('spectateRoom', roomId);
-            setGameState(prev => ({
-                ...prev,
-                status: 'spectate'
-            }));
-        }
-    };
 
     const handlePlayerReady = () => {
         if (socketRef.current && gameState.roomId) {
@@ -140,9 +178,8 @@ function MultiPlayer() {
                     rooms={rooms}
                     maxRounds={gameState.maxRounds}
                     setMaxRounds={(rounds) => setGameState(prev => ({ ...prev, maxRounds: rounds }))}
-                    onCreateRoom={handleCreateRoom}
+                    onCreateRoom={() => handleCreateRoom({ maxRounds: gameState.maxRounds })}
                     onJoinRoom={handleJoinRoom}
-                    onSpectateRoom={handleSpectateRoom}
                 />
             )}
             
@@ -155,15 +192,10 @@ function MultiPlayer() {
                     scores={gameState.scores}
                     isReady={gameState.isReady}
                     onReady={handlePlayerReady}
+                    onReturnToLobby={() => setGameState(prev => ({ ...prev, status: 'lobby', isReady: false }))}
                 />
             )}
 
-            {gameState.status === 'spectate' && (
-                <SpectatorView 
-                    roomId={gameState.roomId}
-                    socket={socketRef.current}
-                />
-            )}
         </div>
     );
 }

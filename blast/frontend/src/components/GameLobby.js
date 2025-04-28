@@ -1,7 +1,7 @@
 import React from 'react';
 import './GameLobby.css';
 
-function GameLobby({ rooms, maxRounds, setMaxRounds, onCreateRoom, onJoinRoom, onSpectateRoom }) {
+function GameLobby({ rooms, maxRounds, setMaxRounds, onCreateRoom, onJoinRoom }) {
     return (
         <div className="lobby">
             <h2 className="lobby-title">游戏大厅</h2>
@@ -46,12 +46,6 @@ function GameLobby({ rooms, maxRounds, setMaxRounds, onCreateRoom, onJoinRoom, o
                                     disabled={room.status !== 'waiting' || room.players >= 2}
                                 >
                                     加入
-                                </button>
-                                <button 
-                                    onClick={() => onSpectateRoom(room.id)}
-                                    disabled={room.status !== 'playing'}
-                                >
-                                    旁观
                                 </button>
                             </div>
                         </div>

@@ -41,6 +41,26 @@ class GameRoom {
         this.currentRound = 0;
         this.status = 'waiting';
         this.currentPlayer = null;
+        this.timer = null;        // 主计时器
+        this.nextRoundTimer = null; // 下一回合计时器
+        this.gameEndTimer = null;   // 游戏结束计时器
+    }
+
+    // 清除所有计时器
+    clearAllTimers() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        if (this.nextRoundTimer) {
+            clearTimeout(this.nextRoundTimer);
+            this.nextRoundTimer = null;
+        }
+        if (this.gameEndTimer) {
+            clearTimeout(this.gameEndTimer);
+            this.gameEndTimer = null;
+        }
+        console.log(`房间 ${this.id} 的所有计时器已清除`);
     }
 
     toJSON() {
@@ -78,10 +98,32 @@ io.on('connection', (socket) => {
         for (const [roomId, room] of rooms) {
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
-                if (room.players.size === 0) {
-                    rooms.delete(roomId);
-                }
                 io.to(roomId).emit('playerLeft', socket.id);
+                
+                // 如果房间内没有玩家，自动关闭房间
+                if (room.players.size === 0) {
+                    console.log(`房间 ${roomId} 内没有玩家，自动关闭`);
+                    
+                    // 清除所有与该房间相关的计时器
+                    room.clearAllTimers();
+                    
+                    // 如果房间正在游戏中，需要停止游戏
+                    room.status = 'closed';
+                    room.currentPlayer = null;
+                    
+                    // 通知所有玩家房间已关闭
+                    io.to(roomId).emit('roomClosed', { roomId });
+                    
+                    // 从房间列表中移除
+                    rooms.delete(roomId);
+                    
+                    // 如果有准备玩家集合，也一并清除
+                    if (roomReadyPlayers.has(roomId)) {
+                        roomReadyPlayers.delete(roomId);
+                    }
+                    
+                    console.log(`房间 ${roomId} 已完全关闭并清理`);
+                }
             }
         }
     });
@@ -161,21 +203,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('spectateRoom', (roomId) => {
-        const room = rooms.get(roomId);
-        if (!room) {
-            socket.emit('error', '房间不存在');
-            return;
-        }
-
-        socket.join(roomId);
-        socket.emit('roomSpectated', {
-            roomId: room.id,
-            maxRounds: room.maxRounds,
-            currentRound: room.currentRound
-        });
-    });
-
 
     socket.on('playerReady', ({ roomId }) => {
         const room = rooms.get(roomId);
@@ -219,7 +246,7 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('gameStarting', { countdown: 3 });
             
             // 3秒后开始第一回合
-            setTimeout(() => {
+            room.nextRoundTimer = setTimeout(() => {
                 startNewRound(room);
             }, 3000);
         }
@@ -387,7 +414,8 @@ io.on('connection', (socket) => {
         });
         
         // 检查游戏是否结束
-        const maxScore = Math.max(...Array.from(room.scores.values(), 0));
+        const scoresArray = Array.from(room.scores.values());
+        const maxScore = scoresArray.length > 0 ? Math.max(...scoresArray) : 0;
         if (maxScore >= Math.ceil(room.maxRounds / 2)) {
             // 游戏结束
             const winners = Array.from(room.scores.entries())
@@ -399,12 +427,19 @@ io.on('connection', (socket) => {
                 scores: Array.from(room.scores)
             });
             
-            room.status = 'waiting';
-            room.currentRound = 0;
-            room.scores.clear();
+            // 游戏结束后，从房间列表中移除该房间
+            room.gameEndTimer = setTimeout(() => {
+                // 通知所有玩家房间已关闭
+                io.to(room.id).emit('roomClosed', { roomId: room.id });
+                
+                // 从房间列表中移除
+                rooms.delete(room.id);
+                
+                console.log(`房间 ${room.id} 已关闭并从列表中移除`);
+            }, 5000); // 5秒后移除房间，给玩家足够时间看到游戏结束消息
         } else {
             // 准备下一回合
-            setTimeout(() => {
+            room.nextRoundTimer = setTimeout(() => {
                 startNewRound(room);
             }, 5000); // 5秒后开始下一回合
         }

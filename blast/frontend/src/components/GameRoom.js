@@ -12,7 +12,7 @@ const decryptData = async (encryptedData) => {
     return await response.json();
 };
 
-function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, onReady }) {
+function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, onReady, onReturnToLobby }) {
     const [gameState, setGameState] = useState({
         currentPlayer: null,
         timeLeft: 60,
@@ -31,6 +31,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
     const [players, setPlayers] = useState({});
     const [isChatExpanded, setIsChatExpanded] = useState(true);
     const [startCountdown, setStartCountdown] = useState(null);
+    const [gameEndMessage, setGameEndMessage] = useState(null);
 
     // 区域映射 - 与 SinglePlayer 保持一致
     const regionMapping = {
@@ -208,17 +209,24 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                 birth_year: data.birth_year
             };
             
+            // 清空猜测历史并重置游戏状态
             setGameState(prev => ({
                 ...prev,
                 currentPlayer: simplePlayer,
                 remainingGuesses: 8,
                 timeLeft: 60,
-                guess: ''
+                guess: '',
+                guessHistory: [] // 清空自己的猜测历史
             }));
+            
+            // 清空所有玩家的猜测历史
             setPlayersGuesses({});
             
-            // 清理历史记录
+            // 清理历史记录引用
             guessHistoryRef.current = [];
+            
+            // 关闭游戏结果弹窗
+            setShowGameResult(false);
         };
 
         const handleRoundEnd = ({ winner, correctAnswer }) => {
@@ -244,24 +252,53 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             
             // 如果是自己的猜测，添加到自己的历史记录中
             if (playerId === socket.id) {
-                setGameState(prev => ({
-                    ...prev,
-                    guessHistory: [...(prev.guessHistory || []), guessRecord]
-                }));
+                setGameState(prev => {
+                    // 检查是否已经存在相同的猜测
+                    const isDuplicate = prev.guessHistory.some(g => g.name === guess);
+                    if (isDuplicate) {
+                        return prev; // 如果是重复的猜测，不更新状态
+                    }
+                    return {
+                        ...prev,
+                        guessHistory: [...(prev.guessHistory || []), guessRecord],
+                        remainingGuesses: prev.remainingGuesses - 1 // 减少剩余猜测次数
+                    };
+                });
                 
                 // 同时更新引用，确保其他地方也能访问到最新的历史记录
-                guessHistoryRef.current = [...guessHistoryRef.current, guessRecord];
+                if (!guessHistoryRef.current.some(g => g.name === guess)) {
+                    guessHistoryRef.current = [...guessHistoryRef.current, guessRecord];
+                }
             }
             
-            // 无论是谁的猜测，都添加到玩家猜测记录中
+            // 无论是谁的猜测，都添加到玩家猜测记录中，但要检查是否重复
             setPlayersGuesses(prev => {
                 const newGuesses = { ...prev };
                 if (!newGuesses[playerId]) {
                     newGuesses[playerId] = [];
                 }
-                newGuesses[playerId].push(guessRecord);
+                
+                // 检查是否已经存在相同的猜测
+                const isDuplicate = newGuesses[playerId].some(g => g.name === guess);
+                if (!isDuplicate) {
+                    newGuesses[playerId].push(guessRecord);
+                }
+                
                 return newGuesses;
             });
+            
+            // 更新进度条
+            if (playerId === socket.id) {
+                const progressBar = document.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${((gameState.remainingGuesses - 1) / 8) * 100}%`;
+                }
+                
+                // 检查是否猜对或用完猜测次数
+                if (guess.toLowerCase() === gameState.currentPlayer?.hiddenName?.toLowerCase() || gameState.remainingGuesses - 1 === 0) {
+                    setShowGameResult(true);
+                }
+            }
         };
 
         // 不再需要单独处理游戏开始前的玩家猜测，因为现在所有猜测都通过guessResult事件处理
@@ -278,6 +315,27 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             setMessages(history);
         };
 
+        // 处理游戏结束事件
+        const handleGameEnd = ({ winners, scores }) => {
+            console.log('Game ended, winners:', winners, 'scores:', scores);
+            
+            // 检查是否有玩家达到最大分数
+            if (winners && winners.length > 0) {
+                // 判断是自己赢了还是对手赢了
+                const isWinner = winners.includes(socket.id);
+                
+                // 设置游戏结束消息
+                setGameEndMessage(isWinner ? '你赢得了游戏！' : '对手赢得了游戏！');
+                
+                // 3秒后返回大厅
+                setTimeout(() => {
+                    if (onReturnToLobby) {
+                        onReturnToLobby();
+                    }
+                }, 3000);
+            }
+        };
+
         // 注册所有事件监听器
         socket.on('gameStarting', handleGameStarting);
         socket.on('roundStart', handleRoundStart);
@@ -286,6 +344,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
         socket.on('chatMessage', handleChatMessage);
         socket.on('chatHistory', handleChatHistory);
         socket.on('playersReadyStatus', handlePlayersReadyStatus);
+        socket.on('gameEnd', handleGameEnd);
 
         // 清理函数
         return () => {
@@ -296,6 +355,7 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             socket.off('chatMessage', handleChatMessage);
             socket.off('chatHistory', handleChatHistory);
             socket.off('playersReadyStatus', handlePlayersReadyStatus);
+            socket.off('gameEnd', handleGameEnd);
         };
     }, [socket]);
 
@@ -413,25 +473,6 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             return;
         }
 
-        // 构建新的猜测数据 - 与 SinglePlayer 保持一致
-        const newGuess = {
-            name: playerName,
-            team: guessedPlayer.team,
-            teamCorrect: getTeamName(guessedPlayer.team) === getTeamName(gameState.currentPlayer.team),
-            country: countryTranslations[guessedPlayer.country] || guessedPlayer.country,
-            countryCorrect: String(guessedPlayer.country).toLowerCase() === String(gameState.currentPlayer.country).toLowerCase(),
-            countryRegion: getRegion(guessedPlayer.country),
-            targetCountryRegion: getRegion(gameState.currentPlayer.country),
-            birth_year: compareValues(guessedPlayer.birth_year, gameState.currentPlayer.birth_year),
-            guessedAge: 2025 - guessedPlayer.birth_year,
-            targetAge: 2025 - gameState.currentPlayer.birth_year,
-            role: guessedPlayer.role,
-            roleCorrect: guessedPlayer.role.toLowerCase() === gameState.currentPlayer.role.toLowerCase(),
-            majapp: compareMajors(guessedPlayer.majapp, gameState.currentPlayer.majapp),
-            guessedMajapp: guessedPlayer.majapp,
-            targetMajapp: gameState.currentPlayer.majapp
-        };
-
         // 发送猜测数据到服务器
         const guessData = {
             roomId,
@@ -447,26 +488,12 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
         };
         socket.emit('submitGuess', guessData);
 
-        // 更新本地状态
+        // 清空输入框并关闭建议列表
         setGameState(prev => ({
             ...prev,
-            guessHistory: [...prev.guessHistory, newGuess],
-            remainingGuesses: prev.remainingGuesses - 1,
             guess: ''
         }));
-
-        // 更新进度条
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressBar) {
-            progressBar.style.width = `${((gameState.remainingGuesses - 1) / 8) * 100}%`;
-        }
-
         setSuggestions([]);
-
-        // 检查是否猜对或用完猜测次数
-        if (playerName.toLowerCase() === gameState.currentPlayer.hiddenName.toLowerCase() || gameState.remainingGuesses - 1 === 0) {
-            setShowGameResult(true);
-        }
     };
 
     // 提交猜测 - 仿照 SinglePlayer
@@ -493,25 +520,6 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
             return;
         }
 
-        // 构建新的猜测数据 - 与 SinglePlayer 保持一致
-        const newGuess = {
-            name: gameState.guess,
-            team: guessedPlayer.team,
-            teamCorrect: getTeamName(guessedPlayer.team) === getTeamName(gameState.currentPlayer.team),
-            country: countryTranslations[guessedPlayer.country] || guessedPlayer.country,
-            countryCorrect: String(guessedPlayer.country).toLowerCase() === String(gameState.currentPlayer.country).toLowerCase(),
-            countryRegion: getRegion(guessedPlayer.country),
-            targetCountryRegion: getRegion(gameState.currentPlayer.country),
-            birth_year: compareValues(guessedPlayer.birth_year, gameState.currentPlayer.birth_year),
-            guessedAge: 2025 - guessedPlayer.birth_year,
-            targetAge: 2025 - gameState.currentPlayer.birth_year,
-            role: guessedPlayer.role,
-            roleCorrect: guessedPlayer.role.toLowerCase() === gameState.currentPlayer.role.toLowerCase(),
-            majapp: compareMajors(guessedPlayer.majapp, gameState.currentPlayer.majapp),
-            guessedMajapp: guessedPlayer.majapp,
-            targetMajapp: gameState.currentPlayer.majapp
-        };
-
         // 发送猜测数据到服务器
         const guessData = {
             roomId,
@@ -527,26 +535,12 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
         };
         socket.emit('submitGuess', guessData);
 
-        // 更新本地状态
+        // 清空输入框并关闭建议列表
         setGameState(prev => ({
             ...prev,
-            guessHistory: [...prev.guessHistory, newGuess],
-            remainingGuesses: prev.remainingGuesses - 1,
             guess: ''
         }));
-
-        // 更新进度条
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressBar) {
-            progressBar.style.width = `${((gameState.remainingGuesses - 1) / 8) * 100}%`;
-        }
-
         setSuggestions([]);
-
-        // 检查是否猜对或用完猜测次数
-        if (gameState.guess.toLowerCase() === gameState.currentPlayer.hiddenName.toLowerCase() || gameState.remainingGuesses - 1 === 0) {
-            setShowGameResult(true);
-        }
     };
 
     const sendMessage = () => {
@@ -574,7 +568,16 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                     <div className="game-header">
                         <h2>房间 #{roomId}</h2>
                         <div className="game-status">
-                            <span>回合: {currentRound}/{maxRounds}</span>
+                            <div className="scores-display">
+                                <span>你的得分: {(scores && socket && scores[socket.id]) || 0}</span>
+                                <span>对手得分: {
+                                    (scores && socket) ? 
+                                    Object.entries(scores)
+                                        .filter(([id]) => id !== socket.id)
+                                        .reduce((total, [_, score]) => total + score, 0)
+                                    : 0
+                                }</span>
+                            </div>
                             <span>剩余时间: {gameState.timeLeft}秒</span>
                             {startCountdown !== null && (
                                 <div className="game-starting-countdown">
@@ -584,35 +587,37 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                         </div>
                     </div>
 
-                    {/* 单人模式风格的输入区域 */}
-                    <div className="input-section">
-                        <input
-                            type="text"
-                            value={gameState.guess}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            placeholder="输入选手名字"
-                            disabled={gameState.remainingGuesses <= 0}
-                            className="player-input"
-                        />
-                        {suggestions.length > 0 && (
-                            <div className="suggestions-list">
-                                {suggestions.map((suggestion, index) => (
-                                    <div
-                                        key={suggestion.name}
-                                        className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
-                                        onClick={() => {
-                                            setGameState((prev) => ({ ...prev, guess: suggestion.name }));
-                                            setSuggestions([]);
-                                            setSelectedIndex(-1);
-                                        }}
-                                    >
-                                        {suggestion.name}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {/* 游戏开始后才显示输入区域 */}
+                    {gameState.currentPlayer && (
+                        <div className="input-section">
+                            <input
+                                type="text"
+                                value={gameState.guess}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder="输入选手名字"
+                                disabled={gameState.remainingGuesses <= 0}
+                                className="player-input"
+                            />
+                            {suggestions.length > 0 && (
+                                <div className="suggestions-list">
+                                    {suggestions.map((suggestion, index) => (
+                                        <div
+                                            key={suggestion.name}
+                                            className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                setGameState((prev) => ({ ...prev, guess: suggestion.name }));
+                                                setSuggestions([]);
+                                                setSelectedIndex(-1);
+                                            }}
+                                        >
+                                            {suggestion.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="button-group">
                         {gameState.currentPlayer ? (
@@ -704,8 +709,16 @@ function GameRoom({ roomId, socket, scores, currentRound, maxRounds, isReady, on
                 </div>
             </div>
 
+            {/* 游戏结束消息 */}
+            {gameEndMessage && (
+                <div className="game-end-message">
+                    {gameEndMessage}
+                    <div className="countdown">3秒后返回大厅...</div>
+                </div>
+            )}
+
             {/* 游戏结果弹窗 - 与 SinglePlayer 保持一致 */}
-            {showGameResult && gameState.currentPlayer && (
+            {showGameResult && gameState.currentPlayer && !gameEndMessage && (
                 <div className="game-result-modal">
                     <div className="game-result-title">
                         {gameState.guessHistory.some(g => g.name.toLowerCase() === gameState.currentPlayer.hiddenName.toLowerCase()) 
