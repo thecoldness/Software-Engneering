@@ -407,9 +407,6 @@ function SinglePlayer() {
                     </button>
                 </div>
 
-                {/* 历史记录 */}
-                <GuessHistory history={guessHistory} player={player} />
-
                 {/* 进度条 */}
                 <div className="progress-container">
                     <div 
@@ -419,6 +416,9 @@ function SinglePlayer() {
                         {remainingGuesses}
                     </div>
                 </div>
+
+                {/* 历史记录 */}
+                <GuessHistory history={guessHistory} player={player} />
 
                 {/* 修改游戏结果弹窗的内容 */}
                 {showGameResult && (
