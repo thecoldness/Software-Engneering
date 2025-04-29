@@ -27,7 +27,7 @@ function App() {
             <div className="game-header">
                 <h1 className="game-title">
                     CSGO 猜选手
-                    <span className="subtitle">Ongoing</span>
+                    <span className="subtitle">Finished</span>
                 </h1>
                 {mode === 'menu' && (
                     <button 
