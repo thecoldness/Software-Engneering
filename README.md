@@ -27,3 +27,10 @@ node server.js
 cd ./blast/fronted
 npm start
 ```
+
+# 测试
+## 单元测试
+
+``` bash
+python -m unittest discover -s tests
+```
