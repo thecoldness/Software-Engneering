@@ -7,3 +7,4 @@ blast/deploy/
 blast/__pycache__/
 tests/__pycache__/
 ~$研发文档编写规范及示例.doc
+*.tmp
