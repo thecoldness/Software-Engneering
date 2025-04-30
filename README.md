@@ -31,6 +31,12 @@ npm start
 # 测试
 ## 单元测试
 
-``` bash
+```bash
 python -m unittest discover -s tests
+```
+
+```bash
+cd blast/
+npm install
+npm test
 ```

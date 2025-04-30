@@ -1,9 +1,23 @@
 {
+  "name": "blast",
+  "version": "1.0.0",
+  "private": true,
   "dependencies": {
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "rootDir": "..",
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "moduleFileExtensions": ["js"]
   }
 }
